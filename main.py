@@ -223,3 +223,51 @@ async def check_answer(request: AnswerCheckRequest):
     except Exception as e:
         print(e)
         raise HTTPException(status_code=500, detail=f"Error processing answer: {str(e)}")
+
+
+class PlanLessonsRequest(BaseModel):
+    roadmap_topic: str
+    section_title: str
+    concept_title: str
+    concept_id: str
+    roadmap_id: str
+    section_id: str
+
+
+@app.post('/plan-lessons')
+async def plan_lessons_for_concept(request: PlanLessonsRequest):
+    print('Planning lessons...')
+    lessons = plan_lessons(
+        topic=request.roadmap_topic,
+        section=request.section_title,
+        concept=request.concept_title
+    )
+
+    db = client.get_database('prod')
+    lessons_col = db.get_collection('lessons')
+    roadmaps_col = db.get_collection('roadmaps')
+
+    lessons_dicts = [{**lesson.model_dump(),
+                      'status': 'locked',
+                      'conceptId': request.concept_id} for lesson in
+                     lessons]
+    lessons_dicts[0]['status'] = 'current'
+
+    try:
+        lessons_col.insert_many(lessons_dicts)
+        roadmaps_col.find_one_and_update(
+            {'_id': ObjectId(request.roadmap_id)},
+            {
+                '$set': {
+                    "sections.$[section].concepts.$[concept].lessons": lessons_dicts
+                }
+            },
+            array_filters=[
+                {"section._id": request.section_id},
+                {"concept._id": request.concept_id}
+            ]
+        )
+        return {'message': 'Lessons planned successfully'}
+    except Exception as e:
+        print(f'Error saving lessons: {e}')
+        raise
