@@ -1,3 +1,5 @@
+from langchain_core.messages import SystemMessage, HumanMessage
+from agents.exercise_checker_agent import exercise_checker, exercise_checker_system_prompt
 from graphs.lesson_generation_graph import LessonAgentState, lesson_generation_graph
 from models.Roadmap import Roadmap
 from bson import ObjectId
@@ -190,3 +192,34 @@ async def generate_lesson(request: LessonRequest):
     except Exception as e:
         print("Error in /lesson endpoint:", e)
         return JSONResponse(status_code=500, content={"error": f"Error generating lesson: {str(e)}"})
+
+
+class AnswerCheckRequest(BaseModel):
+    question: str
+    answer: str
+    lessonContent: str
+
+
+@app.post('/check-answer')
+async def check_answer(request: AnswerCheckRequest):
+    print('Checking answer...')
+    try:
+
+        user_prompt = f"""
+            Question: {request.question}\n\n
+            User's answer: {request.answer}\n\n
+            Lesson Content: {request.lessonContent}
+        """
+
+        answer = exercise_checker.invoke(
+            [
+                SystemMessage(content=exercise_checker_system_prompt),
+                HumanMessage(content=user_prompt)
+            ]
+        )
+        print(answer)
+        return answer.model_dump()
+
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500, detail=f"Error processing answer: {str(e)}")
