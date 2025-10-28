@@ -1,3 +1,6 @@
+from graphs.lesson_generation_graph import LessonAgentState, lesson_generation_graph
+from models.Roadmap import Roadmap
+from bson import ObjectId
 import datetime
 from datetime import timezone
 from fastapi import FastAPI, HTTPException
@@ -107,3 +110,83 @@ async def get_roadmaps():
     roadmaps = list(collection.find())
     print(roadmaps)
     return {'roadmaps': roadmaps}
+
+
+class LessonRequest(BaseModel):
+    roadmapId: str
+    roadmapTitle: str
+    sectionTitle: str
+    conceptTitle: str
+    conceptId: str
+    lessonId: str
+
+@app.post("/lesson")
+async def generate_lesson(request: LessonRequest):
+    try:
+        db = client.get_database("prod")
+        roadmaps_col = db.get_collection("roadmaps")
+        lessons_col = db.get_collection("lessons")
+
+        roadmap_data = roadmaps_col.find_one({"_id": ObjectId(request.roadmapId)})
+        lesson_data = lessons_col.find_one({'_id': ObjectId(request.lessonId)})
+        lesson_titles = [lesson['title'] for lesson in lessons_col.find(
+            {'conceptId': request.conceptId},
+            {'title': 1, '_id': 0}
+        )]
+
+        if not roadmap_data:
+            return JSONResponse(status_code=404, content={"error": "Roadmap not found."})
+        if not lesson_data:
+            return JSONResponse(status_code=404, content={"error": "Lesson not found."})
+
+        initial_state = LessonAgentState(
+            roadmap=Roadmap(**roadmap_data),
+            learned_summary="",
+            current_section_title=request.sectionTitle,
+            current_concept_title=request.conceptTitle,
+            lesson=None,
+            lesson_title=lesson_data['title'],
+            learning_objectives=lesson_data['learning_objectives'],
+            lessons_in_concept=lesson_titles
+        )
+
+        result_dict = lesson_generation_graph.invoke(initial_state)
+        lesson_state = LessonAgentState(**result_dict)
+
+        if not lesson_state.lesson:
+            return JSONResponse(status_code=500, content={"error": "No lesson generated"})
+
+        lesson_dict = lesson_state.lesson.model_dump()
+
+        exercises_data = []
+        for exercise in lesson_dict['exercises']:
+            exercise_data = {
+                'type': exercise['type'],
+                'question': exercise['exercise']['question']
+            }
+            if exercise['type'] == 'mcq':
+                exercise_data['answer_options'] = exercise['exercise']['answer_options']
+                exercise_data['answer_index'] = exercise['exercise']['answer_index']
+            exercises_data.append(exercise_data)
+
+        update_result = lessons_col.update_one(
+            {'_id': ObjectId(request.lessonId)},
+            {'$set': {
+                'content': lesson_dict['content'],
+                'exercises': exercises_data,
+                'summary': lesson_dict['summary'],
+                'is_final': lesson_dict['is_final'],
+                'conceptId': request.conceptId,
+                'createdAt': datetime.datetime.now(),
+                'status': 'current'
+            }}
+        )
+
+        if update_result.modified_count == 0:
+            return JSONResponse(status_code=500, content={"error": "Failed to update lesson"})
+
+        return {"message": "Lesson generated successfully", "lesson_id": request.lessonId}
+
+    except Exception as e:
+        print("Error in /lesson endpoint:", e)
+        return JSONResponse(status_code=500, content={"error": f"Error generating lesson: {str(e)}"})
