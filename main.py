@@ -97,3 +97,13 @@ async def generate_roadmap(request: GenerateRoadmapRequest):
     except Exception as e:
         print("Error saving roadmap:", e)
         return HTTPException(status_code=500, detail=f"Failed to generate roadmap: {e}")
+
+
+@app.get('/roadmaps')
+async def get_roadmaps():
+    db = client.get_database('prod')
+    collection = db.get_collection('roadmaps')
+
+    roadmaps = list(collection.find())
+    print(roadmaps)
+    return {'roadmaps': roadmaps}
