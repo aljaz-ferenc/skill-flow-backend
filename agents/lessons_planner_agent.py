@@ -67,7 +67,7 @@ def plan_lessons(topic: str, section: str, concept: str):
         print(lessons.lessons)
         return lessons.lessons
     except Exception as e:
-        print(f"Error generating lessons: {e}")
+        print(f"Error planning lessons: {e}")
         raise
 
 

@@ -79,8 +79,12 @@ async def generate_roadmap(request: GenerateRoadmapRequest):
             section=sections_with_id[0]['title'],
             concept=sections_with_id[0]['concepts'][0]['title']
         )
-        lessons_dicts = [{**lesson.model_dump(), 'status': 'locked', 'conceptId': first_concept_id} for lesson in
-                         lessons]
+        lessons_dicts = [
+            {
+                **lesson.model_dump(),
+                'status': 'current' if i == 0 else 'locked',
+                'conceptId': first_concept_id
+            } for i, lesson in enumerate(lessons)]
 
         try:
             lessons_col.insert_many(lessons_dicts)

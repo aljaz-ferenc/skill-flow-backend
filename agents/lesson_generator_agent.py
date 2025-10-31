@@ -1,6 +1,7 @@
 from langchain_groq import ChatGroq
 from models.Lesson import Lesson
 from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI
 
 load_dotenv()
 
@@ -85,8 +86,8 @@ lesson_generator_system_prompt = """
        - Ensure the lesson builds on the previous knowledge without repeating what was already summarized.
 """
 
-lesson_generator_agent = ChatGroq(
-        model='llama-3.3-70b-versatile',
+lesson_generator_agent = ChatOpenAI(
+        model='gpt-4o-mini',
         temperature=0.1,
     ).with_structured_output(Lesson)
 
