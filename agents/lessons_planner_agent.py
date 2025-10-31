@@ -1,8 +1,8 @@
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_groq import ChatGroq
 from pydantic import BaseModel, Field
 from typing import List
 from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI
 
 load_dotenv()
 
@@ -53,8 +53,8 @@ user_prompt_template = ChatPromptTemplate.from_messages(
 )
 
 
-lessons_planner_agent = ChatGroq(
-        model='llama-3.3-70b-versatile',
+lessons_planner_agent = ChatOpenAI(
+        model='gpt-4o-mini',
         temperature=0.1,
     ).with_structured_output(LessonList)
 
