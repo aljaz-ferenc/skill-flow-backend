@@ -1,3 +1,4 @@
+import sentry_sdk
 from langchain_core.messages import SystemMessage, HumanMessage
 from agents.exercise_checker_agent import exercise_checker, exercise_checker_system_prompt
 from graphs.lesson_generation_graph import LessonAgentState, lesson_generation_graph
@@ -15,8 +16,14 @@ from agents.lessons_planner_agent import plan_lessons
 from db.mongo import client
 from graphs.roadmap_generation_graph import RoadmapGenerationAgentState, RoadmapStatus, roadmap_generation_graph
 import uuid
+import os
 
 load_dotenv()
+
+sentry_sdk.init(
+    dsn=os.getenv('SENTRY_DSN'),
+    send_default_pii=True,
+)
 
 app = FastAPI()
 

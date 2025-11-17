@@ -14,5 +14,6 @@ dependencies = [
     "langchain-openai>=0.3.35",
     "langgraph>=0.6.10",
     "pymongo[srv]>=4.15.3",
+    "sentry-sdk[fastapi]>=2.44.0",
     "uvicorn>=0.37.0",
 ]
